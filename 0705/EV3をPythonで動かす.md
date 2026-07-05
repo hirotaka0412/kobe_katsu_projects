@@ -2,13 +2,115 @@
 ## 事前の準備
 microUSBにEV3を動かすためのlinuxベースOSであるev3devをインストールする。（USBの容量は16~32
 GB）
-ev3dev:<https://www.ev3dev.org/downloads/>
+
+1. ev3devをインテリジェントブロックに読み込ませる
+	microSDを使用。
+	URLからev3devのOSデータをPCにインストール
+		ev3devダウンロードページ：<https://www.ev3dev.org/downloads/>
+	microSDを接続
+	blenaEtcherを使ってev3devをmicroSDに書き込む : <https://etcher.balena.io>
+	![[Pasted image 20260704143611.png]]
+		
+	microSDをインテリジェントブロックに差し込む
+	一番サイズの大きいファイルを選択
+
+2. PCとEV3を接続
+	PCとEV3をSSHで接続
+	SSHとは->PCから別のコンピュータに安全にログインして操作するための仕組み
+	
+	**BlueToothを使うやり方**
+	
+	1. EV3側でBlueToothをONにする
+			EV3本体の画面で操作する。
+			```
+			Wireless and Networks
+			↓
+			Bluetooth
+			↓
+			Powered にチェック
+			```
+			上記の手順で接続
+	2. BlueToothテザリングをONにする
+		```
+		Wireless and Networks
+		↓
+		Tethering
+		↓
+		Bluetooth にチェック
+		```
+	3. PC側でBlueToothをONにする
+	4. EV3側からPCをスキャンする
+		```
+		Wireless and Networks
+		↓
+		Bluetooth
+		↓
+		Start Scan
+		```
+		しばらくするとPC名が表示され、表示されたPCを選択して`pair`を選ぶ。PC側にもペアリング確認が出る。EV3画面とPC画面に表示される番号を確認して両方で承認する。
+	5. EV3側でIPアドレスを確認する。
+		EV3で次を開く。
+		```
+		Wireless and Networks
+		↓
+		All Network Connections
+		```
+		Bluetooth接続に対応するIPアドレスを探す。次のようなものがよく見られる。
+		```
+		192.168.1.1
+		10.0.1.1
+		169.254.xxx.xxx
+		```
+	6. PowerShellからSSH接続する
+		PowerShellを開いて以下のコマンドを打ち込む
+		```powershell
+		ssh robot@ev3dev.local
+		```
+		だめならEV3のIPアドレスで接続する。
+		```powershell
+		ssh robot@192.168.1.1
+		```
+		パスワードを入力する。パスワードは`maker`。
+		ログインできれば成功。
+	* **うまくいかない場合**
+		WindowsでペアリングしただけだとSSHできない場合がある。**Bluetooth PAN** または **パーソナルエリアネットワーク** として接続する必要がある。
+		以下のように探す。
+		```
+		コントロール パネル
+		↓
+		ハードウェアとサウンド
+		↓
+		デバイスとプリンター
+		↓
+		EV3を右クリック
+		↓
+		接続方法
+		↓
+		アクセスポイント
+		```
+		環境によっては
+		```
+		設定
+		↓
+		Bluetooth とデバイス
+		↓
+		デバイス
+		↓
+		その他のデバイスとプリンター
+		↓
+		EV3を右クリック
+		↓
+		接続方法
+		↓
+		アクセスポイント
+		```
+		な場合もある。
 ## EV3とPCをつなげる
 USB-mini端子とUSB-A端子をもつケーブルを使用。（BlueTooth接続も可）
 
 ```PowerShell
 PS C:\Users\hirot> ssh robot@ev3dev.local
-(robot@ev3dev.local) Password:
+(robot@ev3dev.local) Password:#パスワードは maker
 Linux ev3dev 4.14.117-ev3dev-2.3.5-ev3 #1 PREEMPT Sat Mar 7 12:54:39 CST 2020 armv5tejl
              _____     _
    _____   _|___ /  __| | _____   __
@@ -34,6 +136,13 @@ robot@ev3dev:~$
 ```
 
 ## EV3をPythonで動かしてみる
+
+#### 作業手順：powershellで入力
+1. ファイルを作成
+	`nano [ファイル名（最後は.py固定）]`
+2. エディタに移動するので以下のコードをコピー (ctrl + c)アンドペースト (ctrl + v)で記述した後、保存 
+	(ctrl + o -> Enter -> ctrl + x)
+3. `python3 ファイル名`で実行
 
 **テスト１：音を鳴らす**
 
