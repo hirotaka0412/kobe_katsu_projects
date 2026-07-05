@@ -13,12 +13,101 @@
     <h1>EV3をPythonで動かす</h1>
     <h2 id="_1">事前の準備</h2>
 <p>microSDにEV3を動かすためのlinuxベースOSであるev3devをインストールする。（USBの容量は16~32
-GB）
-ev3dev:<a href="https://www.ev3dev.org/downloads/">https://www.ev3dev.org/downloads/</a></p>
+GB）</p>
+<ol>
+<li>
+<p>ev3devをインテリジェントブロックに読み込ませる
+    microSDを使用。
+    URLからev3devのOSデータをPCにインストール
+        ev3devダウンロードページ：<a href="https://www.ev3dev.org/downloads/">https://www.ev3dev.org/downloads/</a>
+    microSDを接続
+    blenaEtcherを使ってev3devをmicroSDに書き込む : <a href="https://etcher.balena.io">https://etcher.balena.io</a>
+    ![[Pasted image 20260704143611.png]]</p>
+<p>microSDをインテリジェントブロックに差し込む
+一番サイズの大きいファイルを選択</p>
+</li>
+<li>
+<p>PCとEV3を接続
+    PCとEV3をSSHで接続
+    SSHとは-&gt;PCから別のコンピュータに安全にログインして操作するための仕組み</p>
+<p><strong>BlueToothを使うやり方</strong></p>
+<ol>
+<li>EV3側でBlueToothをONにする
+        EV3本体の画面で操作する。
+        <code>Wireless and Networks
+        ↓
+        Bluetooth
+        ↓
+        Powered にチェック</code>
+        上記の手順で接続</li>
+<li>BlueToothテザリングをONにする
+    <code>Wireless and Networks
+    ↓
+    Tethering
+    ↓
+    Bluetooth にチェック</code></li>
+<li>PC側でBlueToothをONにする</li>
+<li>EV3側からPCをスキャンする
+    <code>Wireless and Networks
+    ↓
+    Bluetooth
+    ↓
+    Start Scan</code>
+    しばらくするとPC名が表示され、表示されたPCを選択して<code>pair</code>を選ぶ。PC側にもペアリング確認が出る。EV3画面とPC画面に表示される番号を確認して両方で承認する。</li>
+<li>EV3側でIPアドレスを確認する。
+    EV3で次を開く。
+    <code>Wireless and Networks
+    ↓
+    All Network Connections</code>
+    Bluetooth接続に対応するIPアドレスを探す。次のようなものがよく見られる。
+    <code>192.168.1.1
+    10.0.1.1
+    169.254.xxx.xxx</code></li>
+<li>PowerShellからSSH接続する
+    PowerShellを開いて以下のコマンドを打ち込む
+    <code>powershell
+    ssh robot@ev3dev.local</code>
+    だめならEV3のIPアドレスで接続する。
+    <code>powershell
+    ssh robot@192.168.1.1</code>
+    パスワードを入力する。パスワードは<code>maker</code>。
+    ログインできれば成功。</li>
+<li><strong>うまくいかない場合</strong>
+    WindowsでペアリングしただけだとSSHできない場合がある。<strong>Bluetooth PAN</strong> または <strong>パーソナルエリアネットワーク</strong> として接続する必要がある。
+    以下のように探す。
+    <code>コントロール パネル
+    ↓
+    ハードウェアとサウンド
+    ↓
+    デバイスとプリンター
+    ↓
+    EV3を右クリック
+    ↓
+    接続方法
+    ↓
+    アクセスポイント</code>
+    環境によっては
+    <code>設定
+    ↓
+    Bluetooth とデバイス
+    ↓
+    デバイス
+    ↓
+    その他のデバイスとプリンター
+    ↓
+    EV3を右クリック
+    ↓
+    接続方法
+    ↓
+    アクセスポイント</code>
+    な場合もある。</li>
+</ol>
 <h2 id="ev3pc">EV3とPCをつなげる</h2>
 <p>USB-mini端子とUSB-A端子をもつケーブルを使用。（BlueTooth接続も可）</p>
+</li>
+</ol>
 <pre><code class="language-PowerShell">PS C:\Users\hirot&gt; ssh robot@ev3dev.local
-(robot@ev3dev.local) Password:
+(robot@ev3dev.local) Password:#パスワードは maker
 Linux ev3dev 4.14.117-ev3dev-2.3.5-ev3 #1 PREEMPT Sat Mar 7 12:54:39 CST 2020 armv5tejl
              _____     _
    _____   _|___ /  __| | _____   __
@@ -43,6 +132,14 @@ Type &quot;help&quot;, &quot;copyright&quot;, &quot;credits&quot; or &quot;licen
 robot@ev3dev:~$
 </code></pre>
 <h2 id="ev3python">EV3をPythonで動かしてみる</h2>
+<h4 id="powershell">作業手順：powershellで入力</h4>
+<ol>
+<li>ファイルを作成
+    <code>nano [ファイル名（最後は.py固定）]</code></li>
+<li>エディタに移動するので以下のコードをコピー (ctrl + c)アンドペースト (ctrl + v)で記述した後、保存 
+    (ctrl + o -&gt; Enter -&gt; ctrl + x)</li>
+<li><code>python3 ファイル名</code>で実行</li>
+</ol>
 <p><strong>テスト１：音を鳴らす</strong></p>
 <pre><code class="language-python"># beep_test.py
 from ev3dev2.sound import Sound  
