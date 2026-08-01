@@ -1,0 +1,243 @@
+:root {
+  color-scheme: light;
+  --bg: #f6f7f4;
+  --surface: #ffffff;
+  --ink: #1d2522;
+  --muted: #64726c;
+  --line: #d9dfd7;
+  --accent: #246b5a;
+  --accent-dark: #17493f;
+  --soft: #e8f1ed;
+  --shadow: 0 12px 34px rgba(29, 37, 34, 0.10);
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+  font-family: "Segoe UI", "Hiragino Kaku Gothic ProN", "Yu Gothic", Meiryo, sans-serif;
+  line-height: 1.7;
+}
+
+a {
+  color: var(--accent);
+}
+
+.site-shell,
+.reader-shell,
+.pdf-shell {
+  width: min(1120px, calc(100% - 32px));
+  margin: 0 auto;
+}
+
+.hero {
+  padding: 56px 0 30px;
+  border-bottom: 1px solid var(--line);
+}
+
+.hero h1,
+.markdown-body h1,
+.pdf-header h1 {
+  margin: 0;
+  font-size: clamp(2rem, 5vw, 3.5rem);
+  line-height: 1.18;
+  letter-spacing: 0;
+}
+
+.hero p {
+  max-width: 760px;
+  margin: 18px 0 0;
+  color: var(--muted);
+  font-size: 1.05rem;
+}
+
+.eyebrow,
+.doc-kind {
+  margin: 0 0 8px;
+  color: var(--accent);
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.library {
+  padding: 28px 0 64px;
+}
+
+.date-section + .date-section {
+  margin-top: 34px;
+}
+
+.date-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 14px;
+}
+
+.date-heading h2 {
+  margin: 0;
+  font-size: 1.45rem;
+}
+
+.date-heading span {
+  color: var(--muted);
+}
+
+.document-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+  gap: 16px;
+}
+
+.document-card {
+  min-height: 196px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 20px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.document-card h3 {
+  margin: 0;
+  font-size: 1.14rem;
+  line-height: 1.45;
+  overflow-wrap: anywhere;
+}
+
+.card-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 42px;
+  padding: 8px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  color: var(--ink);
+  background: var(--surface);
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.button-strong {
+  border-color: var(--accent);
+  background: var(--accent);
+  color: #ffffff;
+}
+
+.button:hover {
+  border-color: var(--accent);
+}
+
+.top-link {
+  padding: 28px 0 18px;
+}
+
+.top-link a {
+  font-weight: 700;
+  text-decoration: none;
+}
+
+.markdown-body {
+  margin-bottom: 64px;
+  padding: 34px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  box-shadow: var(--shadow);
+}
+
+.markdown-body h1 {
+  margin-bottom: 22px;
+}
+
+.markdown-body h2 {
+  margin-top: 34px;
+  padding-top: 18px;
+  border-top: 1px solid var(--line);
+}
+
+.markdown-body pre {
+  overflow-x: auto;
+  padding: 16px;
+  border-radius: 8px;
+  background: #17211e;
+  color: #eef8f4;
+}
+
+.markdown-body code {
+  font-family: Consolas, "Courier New", monospace;
+}
+
+.markdown-body :not(pre) > code {
+  padding: 0.12em 0.35em;
+  border-radius: 6px;
+  background: var(--soft);
+}
+
+.pdf-header {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 20px;
+  margin-bottom: 18px;
+}
+
+.pdf-viewer {
+  width: 100%;
+  height: min(78vh, 900px);
+  min-height: 560px;
+  margin-bottom: 48px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--surface);
+}
+
+.empty-state {
+  padding: 24px;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+@media (max-width: 680px) {
+  .site-shell,
+  .reader-shell,
+  .pdf-shell {
+    width: min(100% - 20px, 1120px);
+  }
+
+  .hero {
+    padding-top: 36px;
+  }
+
+  .markdown-body {
+    padding: 20px;
+  }
+
+  .pdf-header {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .pdf-viewer {
+    min-height: 480px;
+  }
+}

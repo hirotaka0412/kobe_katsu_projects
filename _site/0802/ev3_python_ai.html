@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EV3_Python_AI向け説明書</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main class="reader-shell">
+  <nav class="top-link"><a href="../index.html">資料一覧へ戻る</a></nav>
+  <article class="markdown-body">
+    <h1>EV3_Python_AI向け説明書</h1>
+    <h1 id="ev3pythonai">EV3用Pythonコード生成ガイド（AI向け・簡易版）</h1>
+<p>この文書を前提として、LEGO MINDSTORMS EV3を動かすPythonコードを作成してください。</p>
+<h2 id="_1">環境</h2>
+<ul>
+<li>EV3側OS：ev3dev（Debian Stretch）</li>
+<li>Python：3.5.3</li>
+<li>ライブラリ：<code>python-ev3dev2</code>（import名は<code>ev3dev2</code>）</li>
+<li>左モーター：ポートB（<code>OUTPUT_B</code>）</li>
+<li>右モーター：ポートC（<code>OUTPUT_C</code>）</li>
+<li>PC：Ubuntu</li>
+<li>EV3ユーザー名：<code>robot</code></li>
+<li>実行場所：PCではなくEV3上</li>
+</ul>
+<h2 id="_2">コード生成時の規則</h2>
+<ol>
+<li>Python 3.5.3で動くコードにする。</li>
+<li>f文字列、<code>dataclasses</code>、<code>match/case</code>など、新しいPythonの機能を使わない。</li>
+<li>EV3の制御には<code>ev3dev2</code>を使う。他のEV3用APIを混在させない。</li>
+<li>初回テストは速度30%以下、連続動作2秒以下にする。</li>
+<li><code>try</code>と<code>finally</code>を使い、正常終了・例外・<code>Ctrl+C</code>のどの場合もモーターを停止させる。</li>
+<li>無限に走り続けるコードを作らない。ループには終了方法を設ける。</li>
+<li>センサーや追加モーターを使う場合、種類と接続ポートが不明なら質問する。推測しない。</li>
+<li>コード、ファイル名、転送コマンド、実行コマンドを簡潔に示す。</li>
+</ol>
+<h2 id="_3">基本コード</h2>
+<p>次の形を基準にしてください。</p>
+<pre><code class="language-python"># robot_actions.py
+from time import sleep
+from ev3dev2.motor import MoveTank, OUTPUT_B, OUTPUT_C, SpeedPercent
+
+tank = MoveTank(OUTPUT_B, OUTPUT_C)
+
+
+def move(left_speed, right_speed, seconds):
+    if max(abs(left_speed), abs(right_speed)) &gt; 30:
+        raise ValueError(&quot;speed must be 30 or less&quot;)
+    if seconds &lt; 0 or seconds &gt; 2:
+        raise ValueError(&quot;seconds must be between 0 and 2&quot;)
+
+    try:
+        tank.on(SpeedPercent(left_speed), SpeedPercent(right_speed))
+        sleep(seconds)
+    finally:
+        tank.off(brake=True)
+
+
+def forward(seconds=1, speed=30):
+    move(speed, speed, seconds)
+
+
+def backward(seconds=1, speed=30):
+    move(-speed, -speed, seconds)
+
+
+def left(seconds=0.5, speed=30):
+    move(-speed, speed, seconds)
+
+
+def right(seconds=0.5, speed=30):
+    move(speed, -speed, seconds)
+
+
+def stop():
+    tank.off(brake=True)
+
+
+if __name__ == &quot;__main__&quot;:
+    try:
+        forward()
+    except KeyboardInterrupt:
+        pass
+    finally:
+        stop()
+</code></pre>
+<h2 id="ai">AIへの依頼欄</h2>
+<pre><code class="language-text">作りたい動作：
+使用するモーター・センサー：
+接続ポート：
+速度・動作時間：
+停止条件：
+</code></pre>
+<p>情報が足りない場合は、安全性や配線に関係する点だけ質問してください。</p>
+  </article>
+</main>
+</body>
+</html>
