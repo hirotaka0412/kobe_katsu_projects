@@ -1,0 +1,268 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>AIでコード作成_VSCodeからEV3実行まで</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main class="reader-shell">
+  <nav class="top-link"><a href="../index.html">資料一覧へ戻る</a></nav>
+  <article class="markdown-body">
+    <h1>AIでコード作成_VSCodeからEV3実行まで</h1>
+    <h1 id="aivs-codeev3">AIでコードを作り、VS CodeからEV3で実行する手順</h1>
+<p>この手順書では、次の流れを説明します。</p>
+<blockquote>
+<p>AIでPythonコードを作る → VS Codeへ貼り付けて保存 → <code>ssh</code>で接続確認 → <code>scp</code>でEV3へ送る → 再び<code>ssh</code>でEV3へ入る → <code>python3</code>で実行する</p>
+</blockquote>
+<h2 id="1">1. この手順の前提</h2>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>この手順で使う値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>コードを編集するPC</td>
+<td>Ubuntu</td>
+</tr>
+<tr>
+<td>エディター</td>
+<td>VS Code</td>
+</tr>
+<tr>
+<td>Ubuntu側の作業フォルダー</td>
+<td><code>~/ev3-project</code></td>
+</tr>
+<tr>
+<td>Pythonファイル名</td>
+<td><code>test01.py</code></td>
+</tr>
+<tr>
+<td>EV3のユーザー名</td>
+<td><code>robot</code></td>
+</tr>
+<tr>
+<td>EV3のホスト名</td>
+<td><code>ev3dev.local</code></td>
+</tr>
+<tr>
+<td>EV3側の保存場所</td>
+<td><code>/home/robot/projects</code></td>
+</tr>
+</tbody>
+</table>
+<p>EV3のIPアドレスを使う環境では、<code>ev3dev.local</code>を実際のIPアドレスに置き換えてください。</p>
+<blockquote>
+<p><strong>重要:</strong> コマンドの前に表示される<code>hiro@ubuntu:...$</code>や<code>robot@ev3dev:...$</code>はプロンプトです。自分で入力する部分ではありません。</p>
+</blockquote>
+<h2 id="2">2. 全体の流れ</h2>
+<table>
+<thead>
+<tr>
+<th>段階</th>
+<th>操作する場所</th>
+<th>作業</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td>AIのチャット画面</td>
+<td>EV3用のPythonコードを作成する</td>
+</tr>
+<tr>
+<td>2</td>
+<td>UbuntuのVS Code</td>
+<td>コードを貼り付け、<code>test01.py</code>として保存する</td>
+</tr>
+<tr>
+<td>3</td>
+<td>Ubuntuのターミナル</td>
+<td><code>ssh</code>でEV3への接続を確認する</td>
+</tr>
+<tr>
+<td>4</td>
+<td>Ubuntuのターミナル</td>
+<td><code>scp</code>でファイルをEV3へ送る</td>
+</tr>
+<tr>
+<td>5</td>
+<td>Ubuntuのターミナル</td>
+<td><code>ssh</code>でEV3へログインする</td>
+</tr>
+<tr>
+<td>6</td>
+<td>EV3のターミナル</td>
+<td><code>python3 test01.py</code>を実行する</td>
+</tr>
+<tr>
+<td>7</td>
+<td>EV3のターミナル</td>
+<td><code>exit</code>でUbuntuへ戻る</td>
+</tr>
+</tbody>
+</table>
+<h2 id="3-ai">3. AIにコードを作ってもらう</h2>
+<p>AIには、作りたい動作だけでなく、EV3の環境や安全条件も伝えます。</p>
+<h3 id="_1">依頼文の例</h3>
+<pre><code class="language-text">LEGO MINDSTORMS EV3用のPythonコードを作成してください。
+
+環境:
+- OS: ev3dev
+- Python: 3.5.3
+- ライブラリ: python-ev3dev2
+- 左モーター: OUTPUT_B
+- 右モーター: OUTPUT_C
+
+動作:
+- 速度30%で1秒前進する
+- 動作後は必ずモーターを停止する
+
+安全条件:
+- 速度は30%以下
+- try/finallyを使い、エラーやCtrl+Cでもモーターを停止する
+- Python 3.5.3で使えない新しい構文は使わない
+
+test01.pyとして保存できる完成コードだけを、Pythonのコードブロックで出力してください。
+</code></pre>
+<p>AIがコードを出力したら、説明文ではなく、Pythonのコードブロック内だけをコピーします。</p>
+<h2 id="4-vs-code">4. VS Codeへ貼り付けて保存する</h2>
+<ol>
+<li>UbuntuでVS Codeを開きます。</li>
+<li><code>~/ev3-project</code>フォルダーを開きます。</li>
+<li>新しいファイルを作り、名前を<code>test01.py</code>にします。</li>
+<li>AIが作成したコードを貼り付けます。</li>
+<li><code>Ctrl+S</code>で保存します。</li>
+</ol>
+<p>作業フォルダーがまだない場合は、Ubuntuのターミナルで次を実行します。</p>
+<pre><code class="language-bash">mkdir -p ~/ev3-project
+code ~/ev3-project
+</code></pre>
+<h2 id="5-ubuntu">5. Ubuntu側で現在地とファイルを確認する</h2>
+<p>VS Codeで「ターミナル」→「新しいターミナル」を開きます。次のように、<code>@</code>の右側が<code>ubuntu</code>になっていることを確認してください。</p>
+<pre><code class="language-text">hiro@ubuntu:~/ev3-project$
+</code></pre>
+<p>続けて、Ubuntu側で次のコマンドを実行します。</p>
+<pre><code class="language-bash">cd ~/ev3-project
+pwd
+ls
+</code></pre>
+<p>確認することは次の2点です。</p>
+<ul>
+<li><code>pwd</code>の結果が<code>/home/ユーザー名/ev3-project</code>になっている</li>
+<li><code>ls</code>の結果に<code>test01.py</code>が表示される</li>
+</ul>
+<h2 id="6-sshev3">6. <code>ssh</code>でEV3への接続を確認する</h2>
+<p>このコマンドは<strong>Ubuntu側</strong>で実行します。</p>
+<pre><code class="language-bash">ssh robot@ev3dev.local
+</code></pre>
+<p>初回接続時に接続先の確認が表示されたら<code>yes</code>と入力します。パスワードを求められた場合は、EV3の<code>robot</code>ユーザーのパスワードを入力します。</p>
+<p>接続に成功すると、プロンプトの<code>@</code>の右側が<code>ubuntu</code>から<code>ev3dev</code>へ変わります。</p>
+<pre><code class="language-text">接続前: hiro@ubuntu:~/ev3-project$
+接続後: robot@ev3dev:~$
+</code></pre>
+<p>初回だけ、EV3側でコードの保存フォルダーを作成します。</p>
+<pre><code class="language-bash">mkdir -p /home/robot/projects
+</code></pre>
+<h2 id="7-scpev3">7. <code>scp</code>でコードをEV3へ送る</h2>
+<p>この操作は、必ず<strong>Ubuntu側</strong>で行います。ターミナルで新しいタブを作成してください。</p>
+<pre><code class="language-bash">scp test01.py robot@ev3dev.local:/home/robot/projects/
+</code></pre>
+<p>パスワードを求められた場合は、EV3の<code>robot</code>ユーザーのパスワードを入力します。入力中は文字が画面に表示されませんが、そのまま入力してEnterを押してください。</p>
+<h2 id="8-ev3">8. EV3側でコードを実行する</h2>
+<p>送信後、Ubuntu側から再びEV3へログインします。</p>
+<pre><code class="language-bash">ssh robot@ev3dev.local
+</code></pre>
+<p>プロンプトが<code>robot@ev3dev:...$</code>へ変わったことを確認してから、次のコマンドを実行します。</p>
+<pre><code class="language-bash">cd /home/robot/projects
+pwd
+ls
+python3 test01.py
+</code></pre>
+<p>確認することは次の3点です。</p>
+<ul>
+<li><code>pwd</code>の結果が<code>/home/robot/projects</code>になっている</li>
+<li><code>ls</code>の結果に<code>test01.py</code>が表示される</li>
+<li>EV3がAIへ依頼した内容どおりに動作する</li>
+</ul>
+<p>プログラムを途中で止める場合は<code>Ctrl+C</code>を押します。終了後、Ubuntu側へ戻るには次を実行します。</p>
+<pre><code class="language-bash">exit
+</code></pre>
+<p>プロンプトが<code>hiro@ubuntu:...$</code>へ戻れば、EV3からログアウトできています。</p>
+<h2 id="9">9. コードを修正して再実行する</h2>
+<p>コードを修正するときは、次の流れを繰り返します。</p>
+<ol>
+<li>UbuntuのVS Codeで<code>test01.py</code>を修正する</li>
+<li><code>Ctrl+S</code>で保存する</li>
+<li>Ubuntu側のプロンプトで<code>scp</code>を実行する</li>
+<li>Ubuntu側のプロンプトで<code>ssh</code>を実行する</li>
+<li>EV3側のプロンプトで<code>python3 test01.py</code>を実行する</li>
+<li>EV3側で<code>exit</code>を実行し、Ubuntuへ戻る</li>
+</ol>
+<pre><code class="language-bash"># Ubuntu側
+cd ~/ev3-project
+scp test01.py robot@ev3dev.local:/home/robot/projects/
+ssh robot@ev3dev.local
+
+# ここからEV3側
+cd /home/robot/projects
+python3 test01.py
+exit
+</code></pre>
+<blockquote>
+<p><code># Ubuntu側</code>などの行は説明用のコメントです。コピーして実行しても問題ありませんが、プロンプトを見ながら1行ずつ実行するほうが安全です。</p>
+</blockquote>
+<h2 id="10">10. よくあるエラー</h2>
+<h3 id="test01py-no-such-file-or-directory"><code>test01.py: No such file or directory</code></h3>
+<p>現在地またはファイル名が違います。</p>
+<pre><code class="language-bash">pwd
+ls
+</code></pre>
+<p>で確認してください。</p>
+<h3 id="permission-denied"><code>Permission denied</code></h3>
+<p>ユーザー名またはパスワードを確認します。EV3のユーザー名は通常<code>robot</code>です。</p>
+<h3 id="ev3">EV3に送ったはずなのに古い動作をする</h3>
+<p>VS Codeで保存してから<code>scp</code>を実行したか確認します。また、Ubuntu側とEV3側の両方で<code>pwd</code>と<code>ls</code>を確認してください。</p>
+<h3 id="python3"><code>python3</code>実行後にモーターが止まらない</h3>
+<p>まず<code>Ctrl+C</code>で停止します。すぐにEV3を安全に停止できる状態で実習し、車輪を床から浮かせた状態で初回テストを行ってください。AIへコードを依頼するときは、<code>try/finally</code>で必ずモーターを停止する条件を含めます。</p>
+<h2 id="11">11. 実行前チェックリスト</h2>
+<ul>
+<li>[ ] AIへEV3のPythonバージョン、ポート、安全条件を伝えた</li>
+<li>[ ] VS Codeで<code>test01.py</code>を保存した</li>
+<li>[ ] Ubuntu側で<code>pwd</code>と<code>ls</code>を確認した</li>
+<li>[ ] <code>ssh</code>でEV3への接続を確認し、<code>exit</code>でUbuntuへ戻った</li>
+<li>[ ] Ubuntu側から<code>scp</code>を実行した</li>
+<li>[ ] 送信後、Ubuntu側から再び<code>ssh</code>を実行した</li>
+<li>[ ] プロンプトが<code>robot@ev3dev:...$</code>へ変わった</li>
+<li>[ ] EV3側で<code>pwd</code>と<code>ls</code>を確認した</li>
+<li>[ ] EV3を安全に停止できる状態にした</li>
+<li>[ ] EV3側で<code>python3 test01.py</code>を実行した</li>
+<li>[ ] 終了後に<code>exit</code>でUbuntuへ戻った</li>
+</ul>
+<h2 id="12">12. 覚えるポイント</h2>
+<pre><code class="language-text">AI       : コードを作る
+VS Code  : Ubuntu上でコードを編集・保存する
+scp      : UbuntuからEV3へファイルを送る
+ssh      : UbuntuからEV3へログインする
+python3  : EV3上でプログラムを実行する
+exit     : EV3からログアウトしてUbuntuへ戻る
+</code></pre>
+<p>コマンドを打つ前に、次の3点を確認します。</p>
+<blockquote>
+<p><strong>どのPCか → どの場所か → 何をするか</strong></p>
+</blockquote>
+<h2 id="_2">参考資料</h2>
+<ul>
+<li><a href="https://chatgpt.com/share/6a6e38da-316c-83ee-99d4-7acfc2f72235">共有チャット</a></li>
+<li><a href="https://documentation.ubuntu.com/desktop/en/latest/tutorial/the-linux-command-line-for-beginners/">Ubuntu: The Linux command line for beginners</a></li>
+<li><a href="https://man.openbsd.org/cgi-bin/man.cgi/OpenBSD-current/man1/ssh.1">OpenSSH ssh manual</a></li>
+<li><a href="https://man.openbsd.org/scp.1">OpenSSH scp manual</a></li>
+</ul>
+  </article>
+</main>
+</body>
+</html>
