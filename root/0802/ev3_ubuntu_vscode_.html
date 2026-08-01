@@ -1,0 +1,326 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EV3_Ubuntu_VSCode_接続転送手順</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main class="reader-shell">
+  <nav class="top-link"><a href="../index.html">資料一覧へ戻る</a></nav>
+  <article class="markdown-body">
+    <h1>EV3_Ubuntu_VSCode_接続転送手順</h1>
+    <h1 id="ev3ubuntupcvs-codepython">EV3とUbuntuノートPCを接続し、VS CodeのPythonコードを転送する手順</h1>
+<h2 id="1">1. この手順のゴール</h2>
+<p>この手順では、次の流れを構築します。</p>
+<ol>
+<li>EV3で<code>ev3dev</code>を起動する</li>
+<li>UbuntuノートPCとEV3をBluetoothまたはUSBで接続する</li>
+<li>UbuntuからSSHでEV3へログインする</li>
+<li>Ubuntu上のVS CodeでPythonコードを作成する</li>
+<li><code>scp</code>でPythonファイルをEV3へ転送する</li>
+<li>SSH接続したEV3上でコードを実行する</li>
+</ol>
+<blockquote>
+<p><strong>重要：</strong> VS CodeはUbuntu側で動かします。EV3は性能が限られているため、コードの編集はUbuntu、実行はEV3という役割分担にします。</p>
+</blockquote>
+<hr>
+<h2 id="2">2. 使用環境</h2>
+<ul>
+<li>LEGO MINDSTORMS EV3</li>
+<li>EV3用microSDカード（16～32 GB程度）</li>
+<li><code>ev3dev</code>を導入済みのEV3</li>
+<li>UbuntuノートPC</li>
+<li>Bluetooth、またはUSB Mini-Bケーブル</li>
+<li>VS Code</li>
+<li>Python 3</li>
+</ul>
+<p>本書の例では、EV3側のユーザー名を<code>robot</code>、転送先を<code>/home/robot/projects</code>とします。</p>
+<hr>
+<h2 id="3-ev3">3. EV3側の事前準備</h2>
+<h3 id="31-ev3dev">3.1 ev3devを用意する</h3>
+<p>まだ導入していない場合は、<a href="https://www.ev3dev.org/downloads/">ev3dev公式サイト</a>からEV3用イメージを入手し、microSDカードへ書き込みます。そのmicroSDカードをEV3へ挿入して起動します。</p>
+<h3 id="32-ev3">3.2 EV3のユーザー情報</h3>
+<p>一般的な初期設定は次のとおりです。</p>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>値</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>ユーザー名</td>
+<td><code>robot</code></td>
+</tr>
+<tr>
+<td>ホスト名</td>
+<td><code>ev3dev</code></td>
+</tr>
+<tr>
+<td>接続先候補</td>
+<td><code>ev3dev.local</code>またはEV3のIPアドレス</td>
+</tr>
+</tbody>
+</table>
+<p>初期パスワードはev3devのバージョンによって異なる場合があります。初回ログイン後は、安全のため次のコマンドで変更してください。</p>
+<pre><code class="language-bash">passwd
+</code></pre>
+<hr>
+<h2 id="4-ubuntu">4. Ubuntu側の事前準備</h2>
+<p>Ubuntuでターミナルを開き、SSHクライアントとホスト名解決に使うパッケージを確認・導入します。</p>
+<pre><code class="language-bash">sudo apt update
+sudo apt install openssh-client avahi-daemon
+</code></pre>
+<p>インストール確認：</p>
+<pre><code class="language-bash">ssh -V
+command -v scp
+</code></pre>
+<p>VS Codeが未導入の場合は、Ubuntu Softwareなどからインストールします。VS Codeを起動し、必要に応じて拡張機能の「Python」（Microsoft）も導入します。</p>
+<hr>
+<h2 id="5-ev3ubuntu">5. EV3とUbuntuを接続する</h2>
+<p>接続方法は、BluetoothまたはUSBのどちらかを選びます。最初の動作確認にはUSBのほうが簡単で、ケーブルを使わず動かしたい場合はBluetoothが便利です。</p>
+<h2 id="5-a-bluetooth">5-A. Bluetoothで接続する</h2>
+<h3 id="5-a-1-ubuntubluetooth">5-A-1. UbuntuでBluetoothを有効にする</h3>
+<p>Ubuntuの「設定」→「Bluetooth」を開き、Bluetoothをオンにします。</p>
+<p>ターミナルから設定する場合は、次のように操作できます。</p>
+<pre><code class="language-bash">bluetoothctl
+</code></pre>
+<p><code>bluetoothctl</code>内で次を入力します。</p>
+<pre><code class="language-text">power on
+agent on
+default-agent
+scan on
+</code></pre>
+<p>一覧に<code>ev3dev</code>が表示されたら、EV3のMACアドレスを使ってペアリングします。</p>
+<pre><code class="language-text">pair A0:E6:F8:60:CE:B4
+trust A0:E6:F8:60:CE:B4
+connect A0:E6:F8:60:CE:B4
+quit
+</code></pre>
+<blockquote>
+<p>MACアドレス<code>A0:E6:F8:60:CE:B4</code>は例です。実際に表示されたEV3のアドレスへ置き換えてください。確認番号が両方の画面に表示されたら、UbuntuとEV3の双方で承認します。</p>
+</blockquote>
+<h3 id="5-a-2-ev3">5-A-2. EV3側でネットワーク接続を有効にする</h3>
+<p>EV3本体のメニューで、概ね次の順に操作します。</p>
+<ol>
+<li><code>Wireless and Networks</code>を開く</li>
+<li><code>Bluetooth</code>を開く</li>
+<li><code>Powered</code>と<code>Visible</code>を有効にする</li>
+<li>UbuntuノートPCとペアリングする</li>
+<li>ペアリングしたPCを選択する</li>
+<li><code>Connect</code>から<code>Network Access Point</code>を選択する</li>
+</ol>
+<p>接続後、EV3の画面上部またはネットワーク情報画面にIPアドレスが表示されることを確認します。</p>
+<h3 id="5-a-3">5-A-3. 接続確認</h3>
+<p>Ubuntuのターミナルで、まずホスト名を使って確認します。</p>
+<pre><code class="language-bash">ping -c 4 ev3dev.local
+</code></pre>
+<p>応答がない場合は、EV3の画面に表示されたIPアドレスを使います。</p>
+<pre><code class="language-bash">ping -c 4 10.42.0.3
+</code></pre>
+<blockquote>
+<p><code>10.42.0.3</code>は例です。実際のEV3のIPアドレスへ置き換えてください。</p>
+</blockquote>
+<h2 id="5-b-usb">5-B. USBで接続する</h2>
+<ol>
+<li>EV3のUSB Mini-B端子とUbuntuノートPCをケーブルで接続します。</li>
+<li>UbuntuがEV3のUSBネットワークを認識するまで少し待ちます。</li>
+<li>Ubuntuのターミナルで次を実行します。</li>
+</ol>
+<pre><code class="language-bash">ping -c 4 ev3dev.local
+</code></pre>
+<p><code>ev3dev.local</code>を解決できない場合は、EV3の画面に表示されるUSB接続のIPアドレスを使います。</p>
+<hr>
+<h2 id="6-sshev3">6. SSHでEV3へログインする</h2>
+<p>以下のコマンドは、<strong>Ubuntu側のターミナル</strong>で実行します。</p>
+<pre><code class="language-bash">ssh robot@ev3dev.local
+</code></pre>
+<p>IPアドレスを使う場合：</p>
+<pre><code class="language-bash">ssh robot@10.42.0.3
+</code></pre>
+<p>初回接続時に次のような確認が出たら、接続先が自分のEV3であることを確認して<code>yes</code>と入力します。</p>
+<pre><code class="language-text">Are you sure you want to continue connecting (yes/no)? yes
+</code></pre>
+<p>続いてEV3側の<code>robot</code>ユーザーのパスワードを入力します。ログイン後、プロンプトが次のように変われば成功です。</p>
+<pre><code class="language-text">robot@ev3dev:~$
+</code></pre>
+<p>PythonとEV3用ライブラリを確認します。</p>
+<pre><code class="language-bash">python3 --version
+python3 -c &quot;from ev3dev2.sound import Sound; print('ev3dev2 OK')&quot;
+</code></pre>
+<p>最後に、転送先ディレクトリを作ります。</p>
+<pre><code class="language-bash">mkdir -p /home/robot/projects
+exit
+</code></pre>
+<p><code>exit</code>を実行するとEV3からログアウトし、Ubuntu側のターミナルへ戻ります。</p>
+<hr>
+<h2 id="7-vs-codepython">7. VS CodeでPythonファイルを作成する</h2>
+<h3 id="71">7.1 作業フォルダーを作る</h3>
+<p>Ubuntu側で次を実行します。</p>
+<pre><code class="language-bash">mkdir -p ~/ev3-project
+code ~/ev3-project
+</code></pre>
+<p>VS Codeが開いたら、<code>beep_test.py</code>というファイルを作成します。</p>
+<h3 id="72">7.2 音を鳴らすテストコード</h3>
+<pre><code class="language-python">#!/usr/bin/env python3
+from ev3dev2.sound import Sound
+
+sound = Sound()
+sound.beep()
+</code></pre>
+<p>ファイルを保存します。</p>
+<blockquote>
+<p>Ubuntu側に<code>ev3dev2</code>が入っていない場合、VS Codeにインポートエラーの下線が表示されることがあります。実際にこのコードを実行するのはEV3側なので、EV3上でライブラリを読み込めれば動作します。</p>
+</blockquote>
+<h3 id="73">7.3 モーターを動かすテストコード</h3>
+<p>モーターをBポートとCポートへ接続し、<code>motor_test.py</code>を作成します。</p>
+<pre><code class="language-python">#!/usr/bin/env python3
+from ev3dev2.motor import LargeMotor, OUTPUT_B, OUTPUT_C, SpeedPercent
+from time import sleep
+
+left_motor = LargeMotor(OUTPUT_B)
+right_motor = LargeMotor(OUTPUT_C)
+
+left_motor.on(SpeedPercent(30))
+right_motor.on(SpeedPercent(30))
+sleep(2)
+
+left_motor.off()
+right_motor.off()
+</code></pre>
+<blockquote>
+<p>実行前にEV3を床から浮かせるか、すぐ停止できる状態にして安全を確認してください。</p>
+</blockquote>
+<hr>
+<h2 id="8-vs-codeev3">8. VS Codeで作成したコードをEV3へ転送する</h2>
+<p>VS Codeの「ターミナル」→「新しいターミナル」を開きます。次のプロンプトが<code>ユーザー名@Ubuntu-PC</code>の形式になっており、<strong>EV3へSSHログインした状態ではないこと</strong>を確認してください。</p>
+<h3 id="81-1">8.1 1ファイルを転送する</h3>
+<p>VS Codeで開いているフォルダーが<code>~/ev3-project</code>なら、次を実行します。</p>
+<pre><code class="language-bash">cd ~/ev3-project
+scp beep_test.py robot@ev3dev.local:/home/robot/projects/
+</code></pre>
+<p>IPアドレスを使う場合：</p>
+<pre><code class="language-bash">scp beep_test.py robot@10.42.0.3:/home/robot/projects/
+</code></pre>
+<h3 id="82-python">8.2 複数のPythonファイルを転送する</h3>
+<pre><code class="language-bash">scp *.py robot@ev3dev.local:/home/robot/projects/
+</code></pre>
+<h3 id="83">8.3 プロジェクトフォルダー全体を転送する</h3>
+<pre><code class="language-bash">scp -r ~/ev3-project robot@ev3dev.local:/home/robot/projects/
+</code></pre>
+<blockquote>
+<p><code>scp</code>の基本形は<code>scp 転送元 転送先</code>です。Ubuntu上のファイルをEV3へ送るため、コマンドはUbuntu側で実行します。</p>
+</blockquote>
+<hr>
+<h2 id="9-ev3">9. EV3上で転送したコードを実行する</h2>
+<p>Ubuntu側から再びSSH接続します。</p>
+<pre><code class="language-bash">ssh robot@ev3dev.local
+</code></pre>
+<p>転送されたファイルを確認して実行します。</p>
+<pre><code class="language-bash">cd /home/robot/projects
+ls
+python3 beep_test.py
+</code></pre>
+<p>モーターテストを実行する場合：</p>
+<pre><code class="language-bash">python3 motor_test.py
+</code></pre>
+<p>Pythonコードを更新したときは、次の流れを繰り返します。</p>
+<ol>
+<li>UbuntuのVS Codeで編集・保存する</li>
+<li>Ubuntuのターミナルで<code>scp</code>を実行する</li>
+<li>SSH接続したEV3上で<code>python3 ファイル名.py</code>を実行する</li>
+</ol>
+<hr>
+<h2 id="10-ev3">10. <code>ev3</code>という短縮名を使えるようにする</h2>
+<p>次のコマンドは、SSH設定をしていない状態では失敗します。</p>
+<pre><code class="language-bash">scp test01.py ev3:/home/robot/
+</code></pre>
+<p><code>ev3</code>というホスト名が登録されていないため、次のエラーになります。</p>
+<pre><code class="language-text">ssh: Could not resolve hostname ev3: Name or service not known
+</code></pre>
+<p>そのまま転送するなら、次のように正しいユーザー名とホスト名を指定します。</p>
+<pre><code class="language-bash">scp test01.py robot@ev3dev.local:/home/robot/projects/
+</code></pre>
+<p>短縮名<code>ev3</code>を使いたい場合は、Ubuntu側の<code>~/.ssh/config</code>へ次を追加します。</p>
+<pre><code class="language-sshconfig">Host ev3
+    HostName ev3dev.local
+    User robot
+</code></pre>
+<p>IPアドレスを使う場合は、<code>HostName</code>を実際のIPアドレスにします。</p>
+<pre><code class="language-sshconfig">Host ev3
+    HostName 10.42.0.3
+    User robot
+</code></pre>
+<p>設定後は次の短いコマンドを利用できます。</p>
+<pre><code class="language-bash">ssh ev3
+scp test01.py ev3:/home/robot/projects/
+</code></pre>
+<hr>
+<h2 id="11">11. よくあるエラーと対処法</h2>
+<h3 id="could-not-resolve-hostname-ev3"><code>Could not resolve hostname ev3</code></h3>
+<p>原因：<code>ev3</code>という短縮名がSSH設定に登録されていません。</p>
+<p>対処：<code>robot@ev3dev.local</code>または<code>robot@IPアドレス</code>を使うか、前節のSSH設定を追加します。</p>
+<h3 id="could-not-resolve-hostname-ev3devlocal"><code>Could not resolve hostname ev3dev.local</code></h3>
+<p>原因：EV3とネットワーク接続できていないか、<code>.local</code>の名前解決ができていません。</p>
+<p>対処：</p>
+<ul>
+<li>Bluetoothの<code>Network Access Point</code>が接続済みか確認する</li>
+<li>USBケーブルを挿し直す</li>
+<li>EV3画面のIPアドレスを直接使う</li>
+<li>Ubuntuで<code>avahi-daemon</code>が動いているか確認する</li>
+</ul>
+<pre><code class="language-bash">systemctl status avahi-daemon
+</code></pre>
+<h3 id="connection-timed-outno-route-to-host"><code>Connection timed out</code>または<code>No route to host</code></h3>
+<p>原因：UbuntuとEV3が同じ接続経路上にいない、またはIPアドレスが変わっています。</p>
+<p>対処：EV3のネットワーク画面で現在のIPアドレスを確認し、<code>ping</code>を試します。</p>
+<h3 id="permission-denied"><code>Permission denied</code></h3>
+<p>原因：ユーザー名またはパスワードが違います。</p>
+<p>対処：ユーザー名が<code>robot</code>であることと、EV3側で設定したパスワードを確認します。</p>
+<h3 id="no-such-file-or-directory"><code>No such file or directory</code></h3>
+<p>原因：Ubuntu側の転送元ファイル、またはEV3側の転送先ディレクトリが存在しません。</p>
+<p>対処：</p>
+<pre><code class="language-bash"># Ubuntu側で転送元を確認
+pwd
+ls
+
+# EV3側の転送先を作成
+ssh robot@ev3dev.local &quot;mkdir -p /home/robot/projects&quot;
+</code></pre>
+<h3 id="from-cant-read-varmailev3dev2sound"><code>from: can't read /var/mail/ev3dev2.sound</code></h3>
+<p>原因：PythonコードをLinuxのシェルへ直接入力しています。</p>
+<p>誤った例：</p>
+<pre><code class="language-bash">robot@ev3dev:~$ from ev3dev2.sound import Sound
+</code></pre>
+<p>対処：Pythonの対話モードを開始してから入力するか、<code>.py</code>ファイルとして実行します。</p>
+<pre><code class="language-bash">python3
+</code></pre>
+<pre><code class="language-python">from ev3dev2.sound import Sound
+Sound().beep()
+</code></pre>
+<p>または：</p>
+<pre><code class="language-bash">python3 beep_test.py
+</code></pre>
+<h3 id="importerror-no-module-named-ex3dev2"><code>ImportError: No module named 'ex3dev2'</code></h3>
+<p>原因：ライブラリ名のタイプミスです。<code>ex3dev2</code>ではなく<code>ev3dev2</code>と記述します。</p>
+<pre><code class="language-python">from ev3dev2.sound import Sound
+</code></pre>
+<hr>
+<h2 id="12">12. 毎回の基本操作まとめ</h2>
+<p>Ubuntu側のVS Codeでコードを保存した後、VS Codeのターミナルで次を実行します。</p>
+<pre><code class="language-bash">cd ~/ev3-project
+scp beep_test.py robot@ev3dev.local:/home/robot/projects/
+ssh robot@ev3dev.local
+</code></pre>
+<p>SSH接続後、EV3側で実行します。</p>
+<pre><code class="language-bash">cd /home/robot/projects
+python3 beep_test.py
+</code></pre>
+<p>IPアドレスしか使えない環境では、すべての<code>ev3dev.local</code>をEV3に表示されたIPアドレスへ置き換えてください。</p>
+  </article>
+</main>
+</body>
+</html>
