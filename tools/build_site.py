@@ -11,7 +11,7 @@ import markdown
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SITE_DIR = ROOT / "_site"
+SITE_DIR = ROOT / "root"
 ASSETS_DIR = SITE_DIR / "assets"
 DATE_DIR_RE = re.compile(r"^\d{4}$")
 
