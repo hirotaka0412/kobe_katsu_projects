@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>EV3動作手順書</title>
+  <link rel="stylesheet" href="../assets/style.css">
+</head>
+<body>
+<main class="reader-shell">
+  <nav class="top-link"><a href="../index.html">資料一覧へ戻る</a></nav>
+  <article class="markdown-body">
+    <h1>EV3動作手順書</h1>
+    <h1 id="ai">AIでのコード作成</h1>
+<ol>
+<li>以下の環境要件をコピーアンドペーストで記述する。(右上の<code>text</code>をクリックでコピー)
+    ```text
+    これから指示する動作を以下の環境で再現するプログラムを作成してください。<ul>
+<li>EV3側OS：ev3dev（Debian Stretch）</li>
+<li>Python：3.5.3</li>
+<li>ライブラリ：<code>python-ev3dev2</code>（import名は<code>ev3dev2</code>）</li>
+<li>左モーター：ポートB（<code>OUTPUT_B</code>）</li>
+<li>右モーター：ポートC（<code>OUTPUT_C</code>）</li>
+<li>PC：Ubuntu</li>
+<li>EV3ユーザー名：<code>robot</code></li>
+<li>実行場所：PCではなくEV3上
+```</li>
+</ul>
+</li>
+<li>実現したい動作を入力する。（～cm直進して、90度右折して、など）
+    イメージ図
+    ![[Pasted image 20260912163149.png]]</li>
+</ol>
+<hr>
+<h1 id="ev3">EV3にコードを転送</h1>
+<ol>
+<li>パソコン画面からアプリケーション画面を開き「端末」をクリック。コマンド入力画面が開く。</li>
+<li>USB-mini端子を持つケーブルでレゴロボットとPCをつなぐ。</li>
+<li>以下コマンドを入力
+    <code>powershell
+    ssh robot@ev3dev.local</code>
+    パスワード入力画面が出力される。
+    <code>text
+    (robot@ev3dev.local) Password:</code>
+    ここで<code>maker</code>と入力。
+    成功パターン</li>
+</ol>
+<pre><code class="language-PowerShell">Linux ev3dev 4.14.117-ev3dev-2.3.5-ev3 #1 PREEMPT Sat Mar 7 12:54:39 CST 2020 armv5tejl
+             _____     _
+   _____   _|___ /  __| | _____   __
+  / _ \ \ / / |_ \ / _` |/ _ \ \ / /
+ |  __/\ V / ___) | (_| |  __/\ V /
+  \___| \_/ |____/ \__,_|\___| \_/
+
+Debian stretch on LEGO MINDSTORMS EV3!
+Last login: Fri Apr 10 20:19:38 2020 from fe80::6513:32b4:6916:b5f3%usb1
+</code></pre>
+<pre><code>これで実際に操作しているのはレゴブロックになった。
+</code></pre>
+<ol>
+<li>プログラムファイルを作成<ol>
+<li>以下の形式でファイルを作成。
+    <code>PowerShell
+    nano [ファイル名（最後は.py固定）]</code></li>
+<li>エディタに移動するのでAIで作成したコードをコピー (ctrl + c)アンドペースト (ctrl + v)で記述した後、保存 (ctrl + o -&gt; Enter -&gt; ctrl + x)</li>
+<li><code>python3 [ファイル名]</code>で実行</li>
+</ol>
+</li>
+</ol>
+<h1 id="_1">サンプルコード</h1>
+<p>困ったらこれを実行してみてください。音声を再生するプログラムです。</p>
+<p>ファイル名：beep.py</p>
+<pre><code class="language-python">from ev3dev2.sound import Sound  
+
+sound = Sound()  
+sound.beep()
+</code></pre>
+  </article>
+</main>
+</body>
+</html>
