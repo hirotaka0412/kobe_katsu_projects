@@ -69,3 +69,45 @@ describe('daily quota',()=>{
     now.mockReturnValue(Date.parse('2026-10-28T15:00:00Z'));expect((await reserve()).allowed).toBe(true);now.mockRestore();
   });
 });
+
+describe('GitHub Pages cross-origin API',()=>{
+  const origin='https://hirotaka0412.github.io';
+  const configured=()=>({...env(),ALLOWED_ORIGINS:origin});
+  const preflight=(caller=origin,method='POST',headers='content-type')=>new Request('https://example.com/api/chat',{method:'OPTIONS',headers:{Origin:caller,'Access-Control-Request-Method':method,'Access-Control-Request-Headers':headers}});
+  it('answers preflight without consuming quota or calling providers',async()=>{
+    const fetcher=vi.fn();vi.stubGlobal('fetch',fetcher);const e=configured();
+    const response=await worker.fetch(preflight(),e);
+    expect(response.status).toBe(204);
+    expect(response.headers.get('Access-Control-Allow-Origin')).toBe(origin);
+    expect(response.headers.get('Access-Control-Allow-Methods')).toBe('POST');
+    expect(response.headers.get('Access-Control-Allow-Headers')).toBe('Content-Type');
+    expect(response.headers.get('Vary')).toBe('Origin');
+    expect(e.CHAT_RATE.limit).not.toHaveBeenCalled();expect(fetcher).not.toHaveBeenCalled();
+  });
+  it('rejects unapproved origins, methods, headers and opaque origins',async()=>{
+    for(const req of [preflight('https://evil.com'),preflight('https://hirotaka0412.github.io.evil.com'),preflight('null'),preflight(origin,'DELETE'),preflight(origin,'POST','authorization')])expect((await worker.fetch(req,configured())).status).toBe(403);
+    const response=await worker.fetch(request(input(),'https://evil.com'),configured());
+    expect(response.headers.has('Access-Control-Allow-Origin')).toBe(false);
+    const missing=request();missing.headers.delete('Origin');expect((await worker.fetch(missing,configured())).status).toBe(403);
+  });
+  it('adds CORS to configuration, validation failures and internal errors',async()=>{
+    const e=configured();
+    const config=await worker.fetch(new Request('https://example.com/api/config',{headers:{Origin:origin}}),e);
+    expect(config.status).toBe(200);expect(config.headers.get('Access-Control-Allow-Origin')).toBe(origin);
+    const invalid=await worker.fetch(request({...input(),question:''},origin),e);
+    expect(invalid.status).toBe(400);expect(invalid.headers.get('Access-Control-Allow-Origin')).toBe(origin);
+    e.ASSETS.fetch=async()=>{throw new Error('unavailable');};
+    const failed=await worker.fetch(request(input(),origin),e);
+    expect(failed.status).toBe(503);expect(failed.headers.get('Access-Control-Allow-Origin')).toBe(origin);
+  });
+  it('binds Turnstile hostname to the page origin and returns SSE with CORS',async()=>{
+    const fetcher=vi.fn(async(url:string)=>url.includes('siteverify')?Response.json({success:true,hostname:'hirotaka0412.github.io',action:'chat'}):new Response('data: {"candidates":[{"content":{"parts":[{"text":"回答"}]},"finishReason":"STOP"}]}\n\n'));
+    vi.stubGlobal('fetch',fetcher);
+    const response=await worker.fetch(request(input(),origin),configured());
+    expect(response.status).toBe(200);expect(response.headers.get('Access-Control-Allow-Origin')).toBe(origin);
+    expect(response.headers.get('Content-Type')).toContain('text/event-stream');expect(await response.text()).toContain('event: done');
+    fetcher.mockImplementation(async()=>Response.json({success:true,hostname:'example.com',action:'chat'}));
+    const mismatch=await worker.fetch(request(input(),origin),configured());
+    expect(mismatch.status).toBe(403);expect(mismatch.headers.get('Access-Control-Allow-Origin')).toBe(origin);
+  });
+});

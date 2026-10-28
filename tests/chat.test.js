@@ -6,8 +6,8 @@ const html=readFileSync('root/0802/ev3_python_ai.html','utf8');
 const script=readFileSync('root/assets/chat.js','utf8');
 let dom;
 afterEach(()=>dom?.window.close());
-async function setup({mobile=false,enabled=true,stored=null,reply='回答です。'}={}) {
-  dom=new JSDOM(html,{url:'https://example.com/0802/ev3_python_ai.html',runScripts:'outside-only'});
+async function setup({mobile=false,enabled=true,stored=null,reply='回答です。',url='https://example.com/0802/ev3_python_ai.html'}={}) {
+  dom=new JSDOM(html,{url,runScripts:'outside-only'});
   const w=dom.window;
   w.matchMedia=()=>({matches:mobile});w.TextDecoderStream=TextDecoderStream;
   let callback;
@@ -53,4 +53,17 @@ it('stops an active request without storing a partial conversation',async()=>{
   expect($('stop-chat').disabled).toBe(false);$('stop-chat').click();
   await vi.waitFor(()=>expect($('chat-status').textContent).toContain('停止'));
   expect(w.sessionStorage.getItem(key)).toBeNull();expect($('retry-chat').hidden).toBe(false);
+});
+
+it.each([
+  ['https://hirotaka0412.github.io/kobe_katsu_projects/0802/ev3_python_ai.html','https://kobe-katsu-projects.2315097t.workers.dev'],
+  ['https://kobe-katsu-projects.2315097t.workers.dev/0802/ev3_python_ai.html','https://kobe-katsu-projects.2315097t.workers.dev'],
+  ['http://127.0.0.1:8787/0802/ev3_python_ai.html','http://127.0.0.1:8787']
+])('routes config and chat correctly from %s',async(url,api)=>{
+  const {w,$}=await setup({url});
+  expect(String(w.fetch.mock.calls[0][0])).toBe(api+'/api/config');
+  $('question').value='資料を説明して';$('chat-form').dispatchEvent(new w.Event('submit',{cancelable:true}));
+  await vi.waitFor(()=>expect($('chat-status').textContent).toContain('完了'));
+  expect(String(w.fetch.mock.calls[1][0])).toBe(api+'/api/chat');
+  expect(w.fetch.mock.calls[1][1].credentials).toBe('omit');
 });

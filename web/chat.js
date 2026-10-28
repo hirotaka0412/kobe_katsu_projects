@@ -2,6 +2,11 @@ import {marked} from 'marked';
 import DOMPurify from 'dompurify';
 import {events} from '../worker/sse.ts';
 
+// GitHub Pages serves the UI; local previews and the Worker use their own API.
+const API_BASE = location.hostname === 'hirotaka0412.github.io'
+  ? 'https://kobe-katsu-projects.2315097t.workers.dev'
+  : location.origin;
+
 const $=id=>document.getElementById(id);
 const workspace=document.querySelector('.workspace');
 const key=`kobe-chat-v1:${workspace.dataset.documentId}`;
@@ -56,7 +61,7 @@ async function send(payload) {
   const answer=message('model','');let text='',complete=false;
   status('回答を生成しています…');
   try {
-    const response=await fetch(new URL('/api/chat',location.origin),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,turnstileToken:token}),signal:controller.signal});
+    const response=await fetch(new URL('/api/chat',API_BASE),{method:'POST',credentials:'omit',headers:{'Content-Type':'application/json'},body:JSON.stringify({...payload,turnstileToken:token}),signal:controller.signal});
     if(!response.ok) {const error=await response.json();throw new Error(error.error||'送信に失敗しました。');}
     if(!response.body)throw new Error('回答を受信できませんでした。');
     for await(const event of events(response.body)) {
@@ -75,7 +80,7 @@ $('chat-form').onsubmit=e=>{e.preventDefault();if(!config||!ready)return;send({d
 $('retry-chat').onclick=()=>{if(lastRequest)send(lastRequest);};
 async function init() {
   try {
-    const response=await fetch('/api/config');if(!response.ok)throw new Error();config=await response.json();
+    const response=await fetch(new URL('/api/config',API_BASE),{credentials:'omit'});if(!response.ok)throw new Error();config=await response.json();
     $('question').maxLength=config.questionLimit;
     if(!config.enabled){status('AI質問機能は現在利用できません。資料はそのまま閲覧できます。');return;}
     window.kobeTurnstileReady=()=>{

@@ -18,7 +18,7 @@ Cloudflare Turnstileのウィジェットを作成し、許可ホスト名を設
 npm run dev
 ```
 
-起動したURLから資料を開きます。単純な静的HTTPサーバーやGitHub PagesではAI APIが存在しないため、資料のみ閲覧できます。
+起動したURLから資料を開きます。ローカルプレビューとWorkers上の画面は同じ公開先のAPIへ接続します。GitHub Pages上の画面は、本番WorkersのAPIへ接続します。
 ビルドは`npm run build`を使用します。Python処理で`root`を再生成した後、チャットJSをバンドルします。生成済み`root`を直接編集しないでください。
 開発サーバーの起動中にサイトを再生成した場合は、サーバーを再起動してください（生成先を作り直すため、Windowsの監視が外れる場合があります）。
 
@@ -42,6 +42,14 @@ GitHub Actionsによる自動公開にはRepository Secretsの`CLOUDFLARE_API_TO
 GeminiとTurnstileのSecretはCloudflareへ直接登録し、workflowに埋め込みません。設定前もPR・mainでビルド、型検査、テスト、デプロイdry-runを実行します。
 既存のGitHub Pages workflowは維持しています。Workers移行確認まではPagesを削除しないでください。
 新サイトは`workers.dev`のルートから既存と同じ資料パスを配信します。旧GitHub Pages URLはそのまま残り、自動リダイレクトは行いません。
+
+### GitHub PagesからのAI接続
+
+`web/chat.js`の`API_BASE`は、`hirotaka0412.github.io`から開いた場合に`https://kobe-katsu-projects.2315097t.workers.dev`へ接続します。`/api/config`と`/api/chat`の両方が対象です。公開先の変更時はこの値も変更し、`npm run build`でJSを再生成します。
+Workersの`ALLOWED_ORIGINS`には`https://hirotaka0412.github.io`を設定しています。オリジンにはリポジトリ名などのパスを含めません。追加する場合はカンマで区切ります。Workers自身のオリジンも引き続き利用できます。
+APIはOPTIONSの事前確認に対応し、許可したオリジンに対して設定・回答・エラーすべてにCORSヘッダーを付与します。Turnstileのhostnameは、APIのホストではなく質問元ページのホストと照合します。CORSは認証の代わりにはならないため、Turnstileと利用制限も維持します。
+Turnstileの許可ホストには`hirotaka0412.github.io`と`kobe-katsu-projects.2315097t.workers.dev`を登録してください。GitHubへSecretを登録する必要はありません。
+資料・資料ID一覧は同じコミットから両方に公開し、画面に表示される資料とAIの参照資料を揃えてください。
 
 ## 制限・停止
 

@@ -5,12 +5,31 @@ export interface Env {
   GEMINI_API_KEY: string; TURNSTILE_SECRET_KEY: string; TURNSTILE_SITE_KEY: string;
   GEMINI_MODEL: string; AI_ENABLED: string; QUESTION_LIMIT: string; SELECTION_LIMIT: string;
   HISTORY_TURNS: string; OUTPUT_TOKENS: string; DAILY_LIMIT: string;
+  ALLOWED_ORIGINS?: string;
 }
 type Message = {role:'user'|'model'; text:string};
 type Input = {documentId:string; question:string; selection:string; history:Message[]; turnstileToken:string};
 type Document = {id:string; title:string; kind:string; path:string};
 const json = (body:unknown,status=200) => Response.json(body,{status,headers:{'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}});
 const number = (value:string, fallback:number) => Number.isSafeInteger(Number(value)) && Number(value)>0 ? Number(value) : fallback;
+
+function allowedOrigin(request: Request, env: Env): boolean {
+  const origin = request.headers.get('Origin');
+  if (!origin || origin === 'null') return false;
+  try { if (new URL(origin).origin !== origin) return false; } catch { return false; }
+  return origin === new URL(request.url).origin ||
+    (env.ALLOWED_ORIGINS || '').split(',').map(value => value.trim()).includes(origin);
+}
+
+// Wrap all API responses, including errors and SSE, with the same CORS policy.
+function cors(response: Response, request: Request, env: Env): Response {
+  const headers = new Headers(response.headers);
+  headers.set('Vary', 'Origin');
+  if (allowedOrigin(request, env)) {
+    headers.set('Access-Control-Allow-Origin', request.headers.get('Origin')!);
+  }
+  return new Response(response.body, {status: response.status, headers});
+}
 export function validate(body:unknown, env:Env): Input {
   if (!body || typeof body !== 'object') throw new Error('入力が不正です。');
   const b=body as Record<string,unknown>;
@@ -53,7 +72,7 @@ async function chat(request:Request,env:Env):Promise<Response> {
   const started=Date.now();
   if(request.method!=='POST') return json({error:'POSTを使用してください。'},405);
   const url=new URL(request.url);
-  if(request.headers.get('Origin')!==url.origin) return json({error:'このサイトから質問してください。'},403);
+  if(!allowedOrigin(request,env)) return json({error:'このサイトから質問してください。'},403);
   if(env.AI_ENABLED!=='true' || !env.GEMINI_API_KEY || !env.TURNSTILE_SECRET_KEY || !env.TURNSTILE_SITE_KEY) return json({error:'AI質問機能は現在利用できません。'},503);
   if(!request.headers.get('Content-Type')?.startsWith('application/json')) return json({error:'JSON形式が必要です。'},415);
   // Read a bounded stream rather than trusting Content-Length.
@@ -73,7 +92,8 @@ async function chat(request:Request,env:Env):Promise<Response> {
     method:'POST',body:new URLSearchParams({secret:env.TURNSTILE_SECRET_KEY,response:input.turnstileToken,remoteip:ip}),signal:AbortSignal.timeout(10_000)
   });
   const verified=await verification.json<{success:boolean;hostname:string;action:string}>();
-  if(!verified.success || verified.hostname!==url.hostname || verified.action!=='chat') return json({error:'認証をやり直してから送信してください。'},403);
+  const clientHostname=new URL(request.headers.get('Origin')!).hostname;
+  if(!verified.success || verified.hostname!==clientHostname || verified.action!=='chat') return json({error:'認証をやり直してから送信してください。'},403);
   const asset=await env.ASSETS.fetch(new Request(new URL(doc.path,url)));
   if(!asset.ok) return json({error:'資料を取得できません。'},503);
   const data=new Uint8Array(await asset.arrayBuffer());
@@ -132,11 +152,22 @@ async function chat(request:Request,env:Env):Promise<Response> {
 export default {
   async fetch(request:Request,env:Env):Promise<Response> {
     const path=new URL(request.url).pathname;
+    if(!path.startsWith('/api/')) return env.ASSETS.fetch(request);
+    const respond=(response:Response)=>cors(response,request,env);
     try {
-      if(path==='/api/config') return json({enabled:env.AI_ENABLED==='true' && !!env.TURNSTILE_SITE_KEY && !!env.GEMINI_API_KEY && !!env.TURNSTILE_SECRET_KEY,siteKey:env.TURNSTILE_SITE_KEY,questionLimit:number(env.QUESTION_LIMIT,2000),selectionLimit:number(env.SELECTION_LIMIT,4000),historyTurns:number(env.HISTORY_TURNS,10)});
-      if(path==='/api/chat') return await chat(request,env);
-      if(path.startsWith('/api/')) return json({error:'APIが見つかりません。'},404);
-      return await env.ASSETS.fetch(request);
-    } catch {console.log(JSON.stringify({event:'api_error',code:'internal'}));return json({error:'一時的に利用できません。時間をおいて再送してください。'},503);}
+      if(request.headers.has('Origin')&&!allowedOrigin(request,env)) return respond(json({error:'このサイトから質問してください。'},403));
+      if(request.method==='OPTIONS') {
+        const method=path==='/api/chat'?'POST':path==='/api/config'?'GET':null;
+        const requestedHeaders=(request.headers.get('Access-Control-Request-Headers')||'').split(',').map(h=>h.trim().toLowerCase()).filter(Boolean);
+        if(!allowedOrigin(request,env) || !method || request.headers.get('Access-Control-Request-Method')!==method || requestedHeaders.some(h=>h!=='content-type')) return respond(json({error:'許可されていない通信です。'},403));
+        return respond(new Response(null,{status:204,headers:{'Access-Control-Allow-Methods':method,'Access-Control-Allow-Headers':'Content-Type','Cache-Control':'no-store'}}));
+      }
+      if(path==='/api/config') {
+        if(request.method!=='GET') return respond(json({error:'GETを使用してください。'},405));
+        return respond(json({enabled:env.AI_ENABLED==='true' && !!env.TURNSTILE_SITE_KEY && !!env.GEMINI_API_KEY && !!env.TURNSTILE_SECRET_KEY,siteKey:env.TURNSTILE_SITE_KEY,questionLimit:number(env.QUESTION_LIMIT,2000),selectionLimit:number(env.SELECTION_LIMIT,4000),historyTurns:number(env.HISTORY_TURNS,10)}));
+      }
+      if(path==='/api/chat') return respond(await chat(request,env));
+      return respond(json({error:'APIが見つかりません。'},404));
+    } catch {console.log(JSON.stringify({event:'api_error',code:'internal'}));return respond(json({error:'一時的に利用できません。時間をおいて再送してください。'},503));}
   }
 };
