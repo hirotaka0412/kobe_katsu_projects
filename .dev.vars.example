@@ -1,0 +1,3 @@
+# Copy to .dev.vars (gitignored). Never put real secrets in this example.
+GEMINI_API_KEY=""
+TURNSTILE_SECRET_KEY=""

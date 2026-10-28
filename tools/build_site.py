@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import html
+import hashlib
+import json
 import re
 import shutil
 from dataclasses import dataclass
@@ -41,6 +43,13 @@ def main() -> None:
     write_styles()
     sections = build_sections()
     write_index(sections)
+    documents = [d for section in sections for d in section.documents]
+    (ASSETS_DIR / "documents.json").write_text(json.dumps([
+        {"id": document_id(d.source_path), "title": d.title, "kind": d.kind,
+         "path": "/" + d.download_href} for d in documents
+    ], ensure_ascii=False), encoding="utf-8")
+    for name in ("chat.css",):
+        shutil.copy2(ROOT / "web" / name, ASSETS_DIR / name)
 
 
 def build_sections() -> list[DateSection]:
@@ -100,6 +109,7 @@ def build_markdown_page(source_path: Path, out_dir: Path, used_slugs: set[str]) 
 </main>
 """,
             css_href="../assets/style.css",
+            source_path=source_path,
         ),
         encoding="utf-8",
     )
@@ -143,6 +153,7 @@ def build_pdf_page(source_path: Path, out_dir: Path, used_slugs: set[str]) -> Do
 </main>
 """,
             css_href="../assets/style.css",
+            source_path=source_path,
         ),
         encoding="utf-8",
     )
@@ -492,7 +503,19 @@ a {
     )
 
 
-def page_shell(title: str, body: str, css_href: str) -> str:
+def document_id(path: Path) -> str:
+    return hashlib.sha256(path.relative_to(ROOT).as_posix().encode("utf-8")).hexdigest()[:24]
+
+
+def page_shell(title: str, body: str, css_href: str, source_path: Path | None = None) -> str:
+    reader = 'class="reader-shell"' in body or 'class="pdf-shell"' in body
+    extra = ""
+    if reader:
+        # The source is identified at generation time, never supplied as a URL by the browser.
+        assert source_path is not None
+        source = source_path
+        body = f'<div class="workspace" data-document-id="{document_id(source)}">{body}<div class="resize-handle" role="separator" tabindex="0" aria-label="チャットの幅" aria-orientation="vertical" aria-valuemin="300" aria-valuemax="700" aria-valuenow="400"></div>{chat_panel(title, source.suffix.lower() == ".md")}</div>'
+        extra = '<link rel="stylesheet" href="../assets/chat.css"><script type="module" src="../assets/chat.js"></script>'
     return f"""<!doctype html>
 <html lang="ja">
 <head>
@@ -500,12 +523,32 @@ def page_shell(title: str, body: str, css_href: str) -> str:
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>{escape(title)}</title>
   <link rel="stylesheet" href="{css_href}">
+{extra}
 </head>
 <body>
 {body.strip()}
 </body>
 </html>
 """
+
+
+def chat_panel(title: str, selectable: bool) -> str:
+    return f"""
+<button class="chat-toggle" aria-controls="ai-panel" aria-expanded="true">AIに質問</button>
+<aside id="ai-panel" class="chat-panel" aria-label="AIへの質問">
+  <header class="chat-header"><div><strong>AIに質問</strong><p>{escape(title)}</p></div><button id="close-chat" aria-label="資料に戻る">閉じる</button></header>
+  <div class="chat-toolbar"><button id="clear-chat">会話をクリア</button>{'<button id="attach-selection">選択した文章を添付</button>' if selectable else ''}</div>
+  <div id="messages" class="messages" aria-label="会話履歴"></div>
+  <p id="chat-status" role="status" aria-live="polite">AIの接続を確認しています。</p>
+  <form id="chat-form">
+    <div id="selection-box" hidden><span id="selection-preview"></span><button type="button" id="remove-selection">添付を解除</button></div>
+    <label for="question">資料について質問する</label>
+    <textarea id="question" rows="3" maxlength="2000" placeholder="例：このコードの動きを説明して" required></textarea>
+    <p class="privacy-note">質問・会話・閲覧中の資料はGoogle Geminiへ送信されます。個人情報は入力しないでください。履歴はこのタブ内で保持されます。</p>
+    <div id="turnstile"></div>
+    <div class="compose-actions"><button id="send-chat" type="submit" disabled>送信</button><button id="stop-chat" type="button" disabled>生成を停止</button><button id="retry-chat" type="button" hidden>再送</button></div>
+  </form>
+</aside>"""
 
 
 def unique_slug(text: str, used_slugs: set[str]) -> str:

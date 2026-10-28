@@ -5,8 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>EV3動作手順書</title>
   <link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="../assets/chat.css"><script type="module" src="../assets/chat.js"></script>
 </head>
 <body>
+<div class="workspace" data-document-id="83a70e9a0cc71da456d80f8f">
 <main class="pdf-shell">
   <nav class="top-link"><a href="../index.html">資料一覧へ戻る</a></nav>
   <section class="pdf-header">
@@ -20,5 +22,21 @@
     <p>PDFを表示できませんでした。<a href="EV3%E5%8B%95%E4%BD%9C%E6%89%8B%E9%A0%86%E6%9B%B8.pdf">PDFを直接開く</a></p>
   </object>
 </main>
+<div class="resize-handle" role="separator" tabindex="0" aria-label="チャットの幅" aria-orientation="vertical" aria-valuemin="300" aria-valuemax="700" aria-valuenow="400"></div>
+<button class="chat-toggle" aria-controls="ai-panel" aria-expanded="true">AIに質問</button>
+<aside id="ai-panel" class="chat-panel" aria-label="AIへの質問">
+  <header class="chat-header"><div><strong>AIに質問</strong><p>EV3動作手順書</p></div><button id="close-chat" aria-label="資料に戻る">閉じる</button></header>
+  <div class="chat-toolbar"><button id="clear-chat">会話をクリア</button></div>
+  <div id="messages" class="messages" aria-label="会話履歴"></div>
+  <p id="chat-status" role="status" aria-live="polite">AIの接続を確認しています。</p>
+  <form id="chat-form">
+    <div id="selection-box" hidden><span id="selection-preview"></span><button type="button" id="remove-selection">添付を解除</button></div>
+    <label for="question">資料について質問する</label>
+    <textarea id="question" rows="3" maxlength="2000" placeholder="例：このコードの動きを説明して" required></textarea>
+    <p class="privacy-note">質問・会話・閲覧中の資料はGoogle Geminiへ送信されます。個人情報は入力しないでください。履歴はこのタブ内で保持されます。</p>
+    <div id="turnstile"></div>
+    <div class="compose-actions"><button id="send-chat" type="submit" disabled>送信</button><button id="stop-chat" type="button" disabled>生成を停止</button><button id="retry-chat" type="button" hidden>再送</button></div>
+  </form>
+</aside></div>
 </body>
 </html>

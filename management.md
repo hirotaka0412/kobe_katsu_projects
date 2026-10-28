@@ -1,6 +1,6 @@
 # 神戸活資料閲覧HP 管理手順
 
-このリポジトリは、`0705` や `0802` のような日付フォルダに入れた授業資料を、自動でGitHub Pages用の静的サイトに変換します。
+このリポジトリは、`0705` や `0802` のような日付フォルダに入れた授業資料を、Cloudflare WorkersとGitHub Pagesで配信できる静的サイトに変換します。
 
 ## 基本の運用
 
@@ -14,10 +14,10 @@
 3. ローカルで確認する場合は、リポジトリ直下で次を実行します。
 
 ```powershell
-python .\tools\build_site.py
+npm run build
 ```
 
-4. 生成された `_site/index.html` をブラウザで開いて確認します。
+4. `npm run dev`で開発サーバーを起動し、表示されたURLで確認します。資料だけなら `root/index.html` をブラウザで開いて確認できます。
 
 ## 公開の流れ
 
@@ -28,8 +28,8 @@ GitHub Pagesへの公開は、`.github/workflows/pages.yml` のGitHub Actionsで
 3. GitHub Actionsが自動で次を実行します。
    - Pythonをセットアップ
    - `markdown` パッケージをインストール
-   - `python tools/build_site.py` で `_site` を生成
-   - `_site` をGitHub Pagesへデプロイ
+   - `npm ci` でNode.js依存を取得し、`npm run build` で `root` を生成
+   - `root` をGitHub Pagesへデプロイ
 
 手動で再公開したい場合は、GitHub Actionsの `Deploy site to Pages` workflowを `workflow_dispatch` で実行できます。
 
@@ -53,17 +53,22 @@ GitHub Pagesへの公開は、`.github/workflows/pages.yml` のGitHub Actionsで
 資料を追加したら、最低限次を確認します。
 
 ```powershell
-python .\tools\build_site.py
+npm run build
 ```
 
-- `_site/index.html` に新しい日付と資料が出ていること
+- `root/index.html` に新しい日付と資料が出ていること
 - Markdownが文字化けしていないこと
 - PDFの閲覧ボタンとダウンロードボタンが開けること
 
 ## 注意点
 
-- `_site` は自動生成物です。通常は直接編集しません。
-- デザインや生成ルールを変える場合は `tools/build_site.py` を編集します。
+- `root` は自動生成物です。通常は直接編集しません。
+- デザインや生成ルールを変える場合は `tools/build_site.py` と `web/` を編集します。
 - MarkdownファイルはUTF-8で保存してください。
 - 日付フォルダ以外の場所に置いた資料は、サイトには表示されません。
-- 対応外の形式を掲載したい場合は、`tools/build_site.py` に処理を追加します。
+- 対応外の形式を掲載したい場合は、`tools/buildroot.py` に処理を追加します。
+
+
+## AI質問機能
+
+Cloudflare Workers・Geminiの設定と公開手順は [AI_SETUP.md](AI_SETUP.md) を参照してください。
