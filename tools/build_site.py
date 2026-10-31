@@ -46,7 +46,7 @@ def main() -> None:
     documents = [d for section in sections for d in section.documents]
     (ASSETS_DIR / "documents.json").write_text(json.dumps([
         {"id": document_id(d.source_path), "title": d.title, "kind": d.kind,
-         "path": "/" + d.download_href} for d in documents
+         "path": "/" + d.download_href} for d in documents if d.kind != "ZIP"
     ], ensure_ascii=False), encoding="utf-8")
     for name in ("chat.css",):
         shutil.copy2(ROOT / "web" / name, ASSETS_DIR / name)
@@ -68,6 +68,8 @@ def build_sections() -> list[DateSection]:
                 documents.append(build_markdown_page(source_path, out_dir, used_slugs))
             elif suffix == ".pdf":
                 documents.append(build_pdf_page(source_path, out_dir, used_slugs))
+            elif suffix == ".zip":
+                documents.append(build_zip_download(source_path, out_dir))
 
         if documents:
             sections.append(DateSection(date_key=date_dir.name, documents=documents))
@@ -169,6 +171,20 @@ def build_pdf_page(source_path: Path, out_dir: Path, used_slugs: set[str]) -> Do
     )
 
 
+def build_zip_download(source_path: Path, out_dir: Path) -> Document:
+    output_path = out_dir / source_path.name
+    shutil.copy2(source_path, output_path)
+    return Document(
+        title=source_path.stem,
+        source_path=source_path,
+        output_path=output_path,
+        view_href="",
+        download_href=href_for(output_path.relative_to(SITE_DIR)),
+        kind="ZIP",
+        size_label=format_size(source_path.stat().st_size),
+    )
+
+
 def write_index(sections: list[DateSection]) -> None:
     title, intro = read_readme_summary()
     section_html = "\n".join(render_section(section) for section in sections)
@@ -210,6 +226,10 @@ def render_section(section: DateSection) -> str:
 
 
 def render_card(document: Document) -> str:
+    view_link = (
+        f'<a class="button button-strong" href="{document.view_href}">閲覧</a>'
+        if document.view_href else ""
+    )
     return f"""
 <article class="document-card">
   <div>
@@ -217,7 +237,7 @@ def render_card(document: Document) -> str:
     <h3>{escape(document.title)}</h3>
   </div>
   <div class="card-actions">
-    <a class="button button-strong" href="{document.view_href}">閲覧</a>
+    {view_link}
     <a class="button" href="{document.download_href}" download>ダウンロード</a>
   </div>
 </article>
