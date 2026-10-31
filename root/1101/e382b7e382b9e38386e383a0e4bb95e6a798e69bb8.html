@@ -1,0 +1,220 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>システム仕様書</title>
+  <link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="../assets/chat.css"><script type="module" src="../assets/chat.js"></script>
+</head>
+<body>
+<div class="workspace" data-document-id="2edcf4da5d11f34e06f9baa6">
+<main class="reader-shell">
+  <nav class="top-link"><a href="../index.html">資料一覧へ戻る</a></nav>
+  <article class="markdown-body">
+    <h1>システム仕様書</h1>
+    <h1 id="opencvmediapipeev3">OpenCV・MediaPipe・EV3による手の位置を用いたロボット操作</h1>
+<p>スライドより詳しくまとめました。もっと知りたい人はこちらを参照してください。</p>
+<h2 id="1">1. システムの概要</h2>
+<p>カメラで撮影した手の位置と形をPCで解析し、その結果に応じてEV3ロボットを操作するシステムです。手を画面の上下左右に置くとロボットが移動・旋回し、中央に戻す、手を握る、またはカメラから手を外すと停止します。</p>
+<p>画像処理と手の認識はPCで行い、EV3は受信した指令に従ってモーターを動かします。</p>
+<h2 id="2">2. システムの構成</h2>
+<pre><code class="language-mermaid">flowchart LR
+    A[&quot;カメラ&lt;br/&gt;手を撮影&quot;] --&gt; B[&quot;PC：OpenCV&lt;br/&gt;映像を取得・表示&quot;]
+    B --&gt; C[&quot;PC：MediaPipe&lt;br/&gt;手の位置・形を認識&quot;]
+    C --&gt; D[&quot;PC：判定処理&lt;br/&gt;動作指令を生成&quot;]
+    D --&gt;|&quot;Bluetooth接続上のTCP通信&quot;| E[&quot;EV3&lt;br/&gt;指令を受信・モーターを制御&quot;]
+</code></pre>
+<table>
+<thead>
+<tr>
+<th>構成要素</th>
+<th>役割</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>カメラ</td>
+<td>手の映像を撮影する</td>
+</tr>
+<tr>
+<td>OpenCV</td>
+<td>カメラ映像の取得、鏡像化、色変換、結果の表示を行う</td>
+</tr>
+<tr>
+<td>MediaPipe Hand Landmarker</td>
+<td>映像から手の各部の位置を推定する</td>
+</tr>
+<tr>
+<td>判定プログラム</td>
+<td>手の中心位置と握りの状態から動作指令を決める</td>
+</tr>
+<tr>
+<td>Bluetooth・TCP</td>
+<td>PCとEV3をIP接続し、指令を送る</td>
+</tr>
+<tr>
+<td>EV3</td>
+<td>指令に応じて左右のモーターを制御する</td>
+</tr>
+</tbody>
+</table>
+<h2 id="3">3. 動作の流れ</h2>
+<ol>
+<li><strong>映像の取得</strong>：OpenCVがカメラからフレームを取得し、画面上の左右と操作を合わせるために鏡像化します。</li>
+<li><strong>手の認識</strong>：画像をMediaPipe用に色変換し、Hand LandmarkerのVIDEOモードで手のランドマークを推定します。認識する手は最大1つです。</li>
+<li><strong>手の状態の判定</strong>：手首と指の付け根の計5点の平均を手の中心とし、その位置と握りの有無から指令を決定します。</li>
+<li><strong>指令の送信</strong>：PCが <code>forward</code>、<code>backward</code>、<code>left</code>、<code>right</code>、<code>stop</code> のいずれかをTCPでEV3へ送信します。</li>
+<li><strong>モーターの制御</strong>：EV3が指令を受信し、左右のモーターの回転方向を切り替えます。</li>
+</ol>
+<h2 id="4">4. 操作方法</h2>
+<table>
+<thead>
+<tr>
+<th>カメラ画面上の手の状態</th>
+<th>指令</th>
+<th>EV3の動作</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>開いた手を上に置く</td>
+<td><code>forward</code></td>
+<td>前進</td>
+</tr>
+<tr>
+<td>開いた手を下に置く</td>
+<td><code>backward</code></td>
+<td>後退</td>
+</tr>
+<tr>
+<td>開いた手を左に置く</td>
+<td><code>left</code></td>
+<td>左にその場旋回</td>
+</tr>
+<tr>
+<td>開いた手を右に置く</td>
+<td><code>right</code></td>
+<td>右にその場旋回</td>
+</tr>
+<tr>
+<td>手の中心が中央の枠内</td>
+<td><code>stop</code></td>
+<td>停止</td>
+</tr>
+<tr>
+<td>手を握る、または手が映らない</td>
+<td><code>stop</code></td>
+<td>停止</td>
+</tr>
+</tbody>
+</table>
+<ul>
+<li>手の<strong>現在位置</strong>で動作を決めるため、同じ場所に置き続けると動作も続きます。</li>
+<li>中央の停止領域は、画面中心から横・縦それぞれ画面サイズの18%以内です。斜めの位置では、中心からのずれが大きい軸を優先します。</li>
+<li>握りの判定は、親指以外の4本のうち3本以上が曲がっているかを距離から推定する簡易方式です。手の向きや指の重なりによって誤判定する場合があります。</li>
+</ul>
+<h2 id="5">5. 画面表示</h2>
+<ul>
+<li><strong>黄色い枠</strong>：手の中心が入ると停止する領域</li>
+<li><strong>緑色の点</strong>：MediaPipeが推定した手のランドマーク</li>
+<li><strong>紫色の点</strong>：動作判定に使う手の中心</li>
+<li><strong>PREVIEW / EV3</strong>：プレビュー中かEV3への接続中かを表示</li>
+<li><strong>forwardなどの文字</strong>：現在の判定指令</li>
+</ul>
+<h2 id="6">6. プログラムの構成</h2>
+<table>
+<thead>
+<tr>
+<th>ファイル</th>
+<th>実行場所</th>
+<th>役割</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>hand_director.py</code></td>
+<td>PC</td>
+<td>カメラ取得、手の認識、画面表示、EV3への送信</td>
+</tr>
+<tr>
+<td><code>hand_motion.py</code></td>
+<td>PC</td>
+<td>手の位置・握りから動作を判定</td>
+</tr>
+<tr>
+<td><code>hand_landmarker.task</code></td>
+<td>PC</td>
+<td>MediaPipeの手認識モデル</td>
+</tr>
+<tr>
+<td><code>ev3_receiver.py</code></td>
+<td>EV3</td>
+<td>指令の受信、モーター操作、通信状態の監視</td>
+</tr>
+</tbody>
+</table>
+<h2 id="7">7. 通信と停止処理</h2>
+<p>BluetoothのIP接続を使用し、その上でTCP通信を行います。既定のポート番号は <strong>5000</strong> です。PCは指令が変化したとき、および同じ指令が続く場合にも約0.1秒ごとに指令を送ります。</p>
+<p>EV3は指令を約0.5秒受信できない場合や接続が切れた場合にモーターを停止します。PC側の終了時にも停止指令を送る処理があります。ただし、受信プログラムの強制終了やEV3のOS停止など、すべての障害時に停止を保証するものではありません。接続が切れた場合、PC側の自動再接続は行いません。</p>
+<h2 id="8">8. 実行手順</h2>
+<h3 id="_1">準備</h3>
+<ul>
+<li>PCにPython、OpenCV、MediaPipeを用意し、カメラを接続します。</li>
+<li>PC側の3ファイルを同じフォルダーに置きます。</li>
+<li>EV3にev3devと <code>python3-ev3dev2</code> の実行環境を用意し、モーターを左B・右Cに接続します。</li>
+<li>PCとEV3をBluetoothのIP接続で接続し、EV3のIPアドレスを確認します。SSHで使えるホスト名があれば、転送時に使用できます。</li>
+</ul>
+<p>PC側で必要なライブラリをインストールします。</p>
+<pre><code class="language-bash">python -m pip install mediapipe opencv-python
+</code></pre>
+<h3 id="pc">PCだけで認識を確認</h3>
+<p>PC側のファイルを置いたフォルダーで実行します。</p>
+<pre><code class="language-bash">python hand_director.py
+</code></pre>
+<p>EV3には接続せず、カメラ画面に判定結果を表示します。<code>q</code> キーで終了します。</p>
+<h3 id="ev3">EV3を接続して操作</h3>
+<ol>
+<li>PCから受信プログラムをEV3へ転送します。<code>EV3_IP</code> は実際のIPアドレスに置き換えます。</li>
+</ol>
+<p><code>bash
+   scp ev3_receiver.py robot@EV3_IP:/home/robot/
+   ssh robot@EV3_IP</code></p>
+<ol>
+<li>EV3側のターミナルで受信プログラムを起動します。</li>
+</ol>
+<p><code>bash
+   python3 /home/robot/ev3_receiver.py --speed 20</code></p>
+<ol>
+<li>PCの別のターミナルで操作プログラムを起動します。</li>
+</ol>
+<p><code>bash
+   python hand_director.py --host ev3dev.local</code></p>
+<p>初回は車輪を浮かせて回転方向を確認してください。モーターの取り付け方により方向が逆になる場合は、<code>ev3_receiver.py</code> の <code>COMMANDS</code> を調整します。</p>
+<h2 id="9">9. 利用上の注意</h2>
+<ul>
+<li>手は1つだけカメラに映し、照明や背景を調整して認識結果を確認します。</li>
+<li>手の認識には誤差があります。十分なスペースを確保し、すぐ停止できる状態で試してください。</li>
+<li>TCP受信ポートには認証がありません。接続相手が分かるネットワークで使い、必要に応じてEV3側で <code>--bind EV3_IP</code> を指定して待受先を限定します。</li>
+<li>この資料は提供されたプログラムとREADMEに基づく説明です。実機での動作、通信、認識精度は利用環境で確認してください。</li>
+</ul>
+  </article>
+</main>
+<div class="resize-handle" role="separator" tabindex="0" aria-label="チャットの幅" aria-orientation="vertical" aria-valuemin="300" aria-valuemax="700" aria-valuenow="400"></div>
+<button class="chat-toggle" aria-controls="ai-panel" aria-expanded="true">AIに質問</button>
+<aside id="ai-panel" class="chat-panel" aria-label="AIへの質問">
+  <header class="chat-header"><div><strong>AIに質問</strong><p>システム仕様書</p></div><button id="close-chat" aria-label="資料に戻る">閉じる</button></header>
+  <div class="chat-toolbar"><button id="clear-chat">会話をクリア</button><button id="attach-selection">選択した文章を添付</button></div>
+  <div id="messages" class="messages" aria-label="会話履歴"></div>
+  <p id="chat-status" role="status" aria-live="polite">AIの接続を確認しています。</p>
+  <form id="chat-form">
+    <div id="selection-box" hidden><span id="selection-preview"></span><button type="button" id="remove-selection">添付を解除</button></div>
+    <label for="question">資料について質問する</label>
+    <textarea id="question" rows="3" maxlength="2000" placeholder="例：このコードの動きを説明して" required></textarea>
+    <p class="privacy-note">質問・会話・閲覧中の資料はGoogle Geminiへ送信されます。個人情報は入力しないでください。履歴はこのタブ内で保持されます。</p>
+    <div id="turnstile"></div>
+    <div class="compose-actions"><button id="send-chat" type="submit" disabled>送信</button><button id="stop-chat" type="button" disabled>生成を停止</button><button id="retry-chat" type="button" hidden>再送</button></div>
+  </form>
+</aside></div>
+</body>
+</html>

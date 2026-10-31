@@ -1,0 +1,95 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>実行手順</title>
+  <link rel="stylesheet" href="../assets/style.css">
+<link rel="stylesheet" href="../assets/chat.css"><script type="module" src="../assets/chat.js"></script>
+</head>
+<body>
+<div class="workspace" data-document-id="234ebe36fec435b1b0fbe870">
+<main class="reader-shell">
+  <nav class="top-link"><a href="../index.html">資料一覧へ戻る</a></nav>
+  <article class="markdown-body">
+    <h1>実行手順</h1>
+    <p>SSH接続が完了している場合、EV3側のターミナルでPythonファイルを指定して実行します。</p>
+<p>今回のMediaPipeを使ったEV3制御プログラムを例に説明します。</p>
+<h2 id="1-ev3">1. EV3上のファイルを確認する</h2>
+<p>SSH接続後、以下のように表示されている状態から始めます。</p>
+<pre><code>robot@ev3dev:~$
+</code></pre>
+<p>まずファイルを確認します。</p>
+<pre><code>ls -l
+</code></pre>
+<p><code>ev3_receiver.py</code> が存在すれば準備完了です。</p>
+<h2 id="2-python">2. Pythonプログラムを実行する</h2>
+<p>以下のコマンドを入力します。</p>
+<pre><code>python3 /home/robot/ev3_receiver.py --speed 20
+</code></pre>
+<p>各項目の意味は次のとおりです。</p>
+<table>
+<thead>
+<tr>
+<th>項目</th>
+<th>意味</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>python3</code></td>
+<td>Python 3で実行</td>
+</tr>
+<tr>
+<td><code>/home/robot/ev3_receiver.py</code></td>
+<td>実行するファイル</td>
+</tr>
+<tr>
+<td><code>--speed 20</code></td>
+<td>モーター速度を20%に設定</td>
+</tr>
+</tbody>
+</table>
+<p>正常に起動すると、次のメッセージが表示されます。</p>
+<pre><code>Waiting for PC on port 5000
+</code></pre>
+<p>これは、EV3がPCからの動作指令を待機している状態です。</p>
+<h2 id="3-pc">3. PC側のプログラムを起動する</h2>
+<p>EV3側のターミナルはそのままにして、VS Codeで別のターミナルを開きます。</p>
+<p>PC側で次のコマンドを実行します。</p>
+<pre><code>python hand_director.py --host ev3dev.local
+</code></pre>
+<p>これでPCのカメラで認識した手の動きをEV3に送信できます。</p>
+<h2 id="4">4. プログラムを終了する</h2>
+<ul>
+<li>PC側：カメラ画面で <code>q</code> を押す</li>
+<li>EV3側：SSHターミナルで <code>Ctrl + C</code> を押す</li>
+</ul>
+<p>EV3側を停止すると、受信待機プログラムも終了します。</p>
+<h3 id="python">補足：一般的なPythonファイルの場合</h3>
+<p>例えば <code>test.py</code> を実行したい場合は、</p>
+<pre><code>cd /home/robot
+python3 test.py
+</code></pre>
+<p>だけで実行できます。</p>
+<p>注意： 今回のMediaPipeシステムでは、EV3側で実行するのは <code>ev3_receiver.py</code> だけです。<code>hand_director.py</code> と <code>hand_motion.py</code> はPC側で使用します。</p>
+  </article>
+</main>
+<div class="resize-handle" role="separator" tabindex="0" aria-label="チャットの幅" aria-orientation="vertical" aria-valuemin="300" aria-valuemax="700" aria-valuenow="400"></div>
+<button class="chat-toggle" aria-controls="ai-panel" aria-expanded="true">AIに質問</button>
+<aside id="ai-panel" class="chat-panel" aria-label="AIへの質問">
+  <header class="chat-header"><div><strong>AIに質問</strong><p>実行手順</p></div><button id="close-chat" aria-label="資料に戻る">閉じる</button></header>
+  <div class="chat-toolbar"><button id="clear-chat">会話をクリア</button><button id="attach-selection">選択した文章を添付</button></div>
+  <div id="messages" class="messages" aria-label="会話履歴"></div>
+  <p id="chat-status" role="status" aria-live="polite">AIの接続を確認しています。</p>
+  <form id="chat-form">
+    <div id="selection-box" hidden><span id="selection-preview"></span><button type="button" id="remove-selection">添付を解除</button></div>
+    <label for="question">資料について質問する</label>
+    <textarea id="question" rows="3" maxlength="2000" placeholder="例：このコードの動きを説明して" required></textarea>
+    <p class="privacy-note">質問・会話・閲覧中の資料はGoogle Geminiへ送信されます。個人情報は入力しないでください。履歴はこのタブ内で保持されます。</p>
+    <div id="turnstile"></div>
+    <div class="compose-actions"><button id="send-chat" type="submit" disabled>送信</button><button id="stop-chat" type="button" disabled>生成を停止</button><button id="retry-chat" type="button" hidden>再送</button></div>
+  </form>
+</aside></div>
+</body>
+</html>
